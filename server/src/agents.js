@@ -1,6 +1,5 @@
 import { Router } from 'express';
 import { makeTicket } from './auth.js';
-import { config } from './config.js';
 import { one, parseJson, query } from './db.js';
 
 const FIELDS = [
@@ -113,8 +112,8 @@ agentsRouter.post('/:id/test-session', async (req, res) => {
   const a = await one('SELECT id FROM agents WHERE id = ?', [req.params.id]);
   if (!a) return res.status(404).json({ error: 'Agent topilmadi' });
   const ticket = makeTicket(a.id);
-  const base = config.agentPublicWsUrl.replace(/\/$/, '');
+  // Brauzer dashboard qaysi manzildan ochilgan bo'lsa, o'sha manzilning /ws/ yo'liga ulanadi
   res.json({
-    ws_url: `${base}/ws/browser?agent_id=${a.id}&ticket=${encodeURIComponent(ticket)}&sample_rate=16000`,
+    ws_path: `/ws/browser?agent_id=${a.id}&ticket=${encodeURIComponent(ticket)}&sample_rate=16000`,
   });
 });

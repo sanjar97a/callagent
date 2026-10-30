@@ -15,6 +15,47 @@ export function Progress({ stats, total }) {
   );
 }
 
+function PhoneLine({ system }) {
+  const [copied, setCopied] = useState(false);
+  const ok = system.twilio_configured && system.public_url;
+  return (
+    <section className="panel phone-line">
+      <h2>Telefon liniyasi</h2>
+      <dl className="kv">
+        <div>
+          <dt>Twilio</dt>
+          <dd>{system.twilio_configured ? 'Ulangan' : 'Ulanmagan — .env faylidagi TWILIO_* qatorlarini to‘ldiring'}</dd>
+        </div>
+        <div>
+          <dt>Internetdagi manzil</dt>
+          <dd className="mono-num">{system.public_url || 'Tunnel hali ishga tushmagan, bir daqiqadan keyin sahifani yangilang'}</dd>
+        </div>
+        {system.twilio_webhook && (
+          <div>
+            <dt>Kiruvchi qo‘ng‘iroqlar uchun Twilio webhook</dt>
+            <dd className="row">
+              <code className="mono-num">{system.twilio_webhook}</code>
+              <button
+                className="link"
+                onClick={() => {
+                  navigator.clipboard?.writeText(system.twilio_webhook);
+                  setCopied(true);
+                }}
+              >
+                {copied ? 'Nusxalandi' : 'Nusxalash'}
+              </button>
+            </dd>
+          </div>
+        )}
+      </dl>
+      {!ok && <p className="muted small">Kampaniya ikkalasi tayyor bo‘lgandan keyin ishlaydi. Brauzerda sinash hozir ham ishlaydi.</p>}
+      {system.public_url?.includes('trycloudflare') && (
+        <p className="muted small">Bu manzil kompyuter qayta ishga tushganda o‘zgaradi — kiruvchi qo‘ng‘iroqlar uchun Twilio’dagi webhook’ni yangilang.</p>
+      )}
+    </section>
+  );
+}
+
 export default function Campaigns() {
   const navigate = useNavigate();
   const [list, setList] = useState(null);
@@ -22,8 +63,10 @@ export default function Campaigns() {
   const [creating, setCreating] = useState(false);
   const [form, setForm] = useState({ name: '', agent_id: '', concurrency: 2, max_attempts: 2, contacts_text: '' });
   const [error, setError] = useState('');
+  const [system, setSystem] = useState(null);
 
   useEffect(() => {
+    api('/system').then(setSystem).catch(() => {});
     api('/campaigns').then(setList).catch((e) => setError(e.message));
     api('/agents').then((a) => setAgents(a.filter((x) => x.outbound_enabled))).catch(() => {});
   }, []);
@@ -53,6 +96,7 @@ export default function Campaigns() {
         )}
       </header>
       {error && <div className="error">{error}</div>}
+      {system && <PhoneLine system={system} />}
 
       {creating && (
         <form className="panel" onSubmit={create}>

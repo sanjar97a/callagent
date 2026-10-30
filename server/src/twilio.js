@@ -1,5 +1,6 @@
 import crypto from 'node:crypto';
 import { config } from './config.js';
+import { publicUrl, toWs } from './public-url.js';
 
 const esc = (s) =>
   String(s ?? '').replace(/[<>&"']/g, (c) => ({ '<': '&lt;', '>': '&gt;', '&': '&amp;', '"': '&quot;', "'": '&apos;' })[c]);
@@ -12,7 +13,9 @@ export function twilioConfigured() {
 /** Chiquvchi qo'ng'iroq: Twilio raqamni teradi va ovozni agent ishchisiga stream qiladi. */
 export async function placeCall({ to, agentId, campaignId, contactId }) {
   const { accountSid, authToken, fromNumber } = config.twilio;
-  const streamUrl = config.agentPublicWsUrl.replace(/\/$/, '') + '/ws/twilio';
+  const base = await publicUrl();
+  if (!base) throw new Error('Ommaviy manzil yo‘q: tunnel hali ishga tushmagan');
+  const streamUrl = toWs(base) + '/ws/twilio';
   const params = {
     direction: 'outbound',
     agent_id: agentId,
@@ -32,7 +35,7 @@ export async function placeCall({ to, agentId, campaignId, contactId }) {
     To: to,
     From: fromNumber,
     Twiml: twiml,
-    StatusCallback: `${config.publicApiUrl.replace(/\/$/, '')}/webhooks/twilio/status?contact_id=${contactId}`,
+    StatusCallback: `${base}/webhooks/twilio/status?contact_id=${contactId}`,
     StatusCallbackEvent: 'completed',
     Timeout: '30',
   });
@@ -50,10 +53,11 @@ export async function placeCall({ to, agentId, campaignId, contactId }) {
 }
 
 /** X-Twilio-Signature tekshiruvi (https://www.twilio.com/docs/usage/security). */
-export function validTwilioSignature(req) {
+export async function validTwilioSignature(req) {
   const { authToken } = config.twilio;
-  if (!authToken) return false;
-  const url = config.publicApiUrl.replace(/\/$/, '') + req.originalUrl;
+  const base = await publicUrl();
+  if (!authToken || !base) return false;
+  const url = base + req.originalUrl;
   const params = req.body || {};
   const data = Object.keys(params)
     .sort()

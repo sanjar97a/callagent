@@ -13,10 +13,9 @@ export const config = {
   internalToken: process.env.INTERNAL_TOKEN || 'change-me',
   adminEmail: process.env.ADMIN_EMAIL,
   adminPassword: process.env.ADMIN_PASSWORD,
-  // Brauzer ulanadigan agent ishchisi manzili, masalan wss://agent.example.uz
-  agentPublicWsUrl: process.env.AGENT_PUBLIC_WS_URL || 'ws://localhost:8000',
-  // Backendning ommaviy manzili (Twilio status webhook uchun)
-  publicApiUrl: process.env.PUBLIC_API_URL || 'http://localhost:4000',
+  // Internetdan ko'rinadigan manzil: "auto" = Cloudflare tunnel'dan avtomatik
+  publicUrl: process.env.PUBLIC_URL || 'auto',
+  tunnelMetricsUrl: process.env.TUNNEL_METRICS_URL || 'http://localhost:2000',
   twilio: {
     accountSid: process.env.TWILIO_ACCOUNT_SID,
     authToken: process.env.TWILIO_AUTH_TOKEN,

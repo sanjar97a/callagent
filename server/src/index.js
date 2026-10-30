@@ -6,6 +6,8 @@ import { callsRouter, statsRouter } from './calls.js';
 import { campaignsRouter, startDialer, webhooksRouter } from './campaigns.js';
 import { config } from './config.js';
 import { internalRouter } from './internal.js';
+import { publicUrl } from './public-url.js';
+import { twilioConfigured } from './twilio.js';
 
 const app = express();
 app.set('trust proxy', true);
@@ -41,6 +43,18 @@ app.use('/api/agents', requireAuth, wrap(agentsRouter));
 app.use('/api/calls', requireAuth, wrap(callsRouter));
 app.use('/api/campaigns', requireAuth, wrap(campaignsRouter));
 app.use('/api/stats', requireAuth, wrap(statsRouter));
+app.get('/api/system', requireAuth, async (_req, res, next) => {
+  try {
+    const url = await publicUrl();
+    res.json({
+      public_url: url,
+      twilio_configured: twilioConfigured(),
+      twilio_webhook: url ? `${url}/twilio/incoming` : null,
+    });
+  } catch (e) {
+    next(e);
+  }
+});
 app.use('/internal', requireInternal, wrap(internalRouter));
 app.use('/webhooks', wrap(webhooksRouter));
 

@@ -8,6 +8,7 @@
 
 import hashlib
 import hmac
+import re
 import time
 from contextlib import asynccontextmanager
 from xml.sax.saxutils import escape
@@ -75,6 +76,21 @@ async def safe_run_call(websocket: WebSocket, **kwargs):
             await websocket.close(code=1011, reason=str(e)[:120])
         except Exception:  # noqa: BLE001
             pass
+
+
+async def public_url() -> str | None:
+    """Internetdan ko'rinadigan manzil (o'z domeningiz yoki Cloudflare tunnel)."""
+    fixed = (settings.public_url or "").strip()
+    if fixed and fixed != "auto":
+        return fixed.rstrip("/")
+    try:
+        async with state["session"].get(
+            settings.tunnel_metrics_url.rstrip("/") + "/metrics", timeout=aiohttp.ClientTimeout(total=3)
+        ) as r:
+            m = re.search(r"https://[a-z0-9-]+\.trycloudflare\.com", await r.text())
+            return m.group(0) if m else None
+    except Exception:  # noqa: BLE001
+        return None
 
 
 @app.get("/health")
@@ -151,7 +167,14 @@ async def ws_raw(
 @app.post("/twilio/incoming")
 async def twilio_incoming(From: str = Form(""), To: str = Form("")):
     """Twilio raqamining Voice webhook'i shu manzilga qo'yiladi."""
-    url = settings.public_ws_url.rstrip("/") + "/ws/twilio"
+    base = await public_url()
+    if not base:
+        logger.error("Ommaviy manzil topilmadi: tunnel ishlamayapti")
+        return Response(
+            content='<?xml version="1.0" encoding="UTF-8"?><Response><Hangup/></Response>',
+            media_type="application/xml",
+        )
+    url = re.sub(r"^http", "ws", base) + "/ws/twilio"
     twiml = (
         '<?xml version="1.0" encoding="UTF-8"?><Response><Connect>'
         f'<Stream url="{escape(url)}">'

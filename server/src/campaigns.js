@@ -95,7 +95,7 @@ campaignsRouter.delete('/:id', async (req, res) => {
 export const webhooksRouter = Router();
 
 webhooksRouter.post('/twilio/status', async (req, res) => {
-  if (!validTwilioSignature(req)) return res.status(403).send('bad signature');
+  if (!(await validTwilioSignature(req))) return res.status(403).send('bad signature');
   const contactId = Number(req.query.contact_id);
   const status = req.body.CallStatus;
   const contact = await one(

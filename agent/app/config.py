@@ -8,8 +8,9 @@ load_dotenv()
 class Settings:
     backend_url = os.getenv("BACKEND_URL", "http://localhost:4000")
     internal_token = os.getenv("INTERNAL_TOKEN", "change-me")
-    # Twilio media stream ulanadigan ommaviy manzil, masalan wss://agent.example.uz
-    public_ws_url = os.getenv("AGENT_PUBLIC_WS_URL", "ws://localhost:8000")
+    # Internetdan ko'rinadigan manzil: "auto" = Cloudflare tunnel'dan avtomatik
+    public_url = os.getenv("PUBLIC_URL", "auto")
+    tunnel_metrics_url = os.getenv("TUNNEL_METRICS_URL", "http://localhost:2000")
 
     stt_provider = os.getenv("STT_PROVIDER", "yandex")  # yandex | google
     yandex_api_key = os.getenv("YANDEX_API_KEY", "")

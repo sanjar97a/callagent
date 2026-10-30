@@ -41,6 +41,18 @@ Repo ildizidagi `index.html` — serversiz ishlaydigan demo. U Gemini Live API'g
 - Telefon qo'ng'iroqlari, tarix va kampaniyalar faqat to'liq tizimda (pastda).
 - Lokal ochish: `python3 -m http.server` va `http://localhost:8000` (mikrofon `file://` da ishlamaydi).
 
+## Windows kompyuterda server sifatida (eng oson yo'l)
+
+1. [Docker Desktop](https://www.docker.com/products/docker-desktop/) ni o'rnating, kompyuterni qayta yoqing va Docker Desktop'ni oching.
+2. Loyiha papkasidagi **`start.bat`** ni ikki marta bosing.
+3. Birinchi marta `.env` fayli Bloknotda ochiladi: `GOOGLE_API_KEY`, `YANDEX_API_KEY`, `YANDEX_FOLDER_ID` ni yozing, saqlang va yoping. Parollar avtomatik yaratiladi.
+4. 5–15 daqiqadan keyin brauzerda dashboard ochiladi. Email va parol oynada ko'rsatiladi.
+
+- **To'xtatish:** `stop.bat`. **Loglar:** `logs.bat`. Ma'lumotlar saqlanib qoladi.
+- **Internetga chiqish:** `tunnel` servisi (Cloudflare quick tunnel) kompyuterni Twilio uchun ochadi. Manzil har ishga tushganda o'zgaradi. Server va agent uni o'zi o'qiydi, dashboard'dagi Kampaniyalar → "Telefon liniyasi" bo'limida ko'rinadi.
+- **Telefon qo'ng'iroqlari:** `.env` dagi `TWILIO_*` qatorlarini to'ldiring va `start.bat` ni qayta bosing. Kompyuter yoqiq va uyg'oq turgandagina qo'ng'iroq ishlaydi.
+- Quick tunnel sinov uchun mo'ljallangan (kafolatsiz). Doimiy ishlash uchun o'z domeningiz va `PUBLIC_URL=https://domen.uz` ni ishlating.
+
 ## 1. Kalitlarni olish
 
 **Yandex SpeechKit** (o'zbekcha STT va TTS):
@@ -61,7 +73,7 @@ docker compose up -d --build
 
 Dashboard: `http://localhost:8080`. `.env` dagi `ADMIN_EMAIL` / `ADMIN_PASSWORD` bilan kiring. Bazada ikkita namunaviy agent bor: “Aziza - NPS aniqlovchi” va “Qabulxona”. Kartadagi **Sinab ko'rish** tugmasini bosing.
 
-> Lokal sinovda `.env` da `PUBLIC_API_URL=http://localhost:8080` va `AGENT_PUBLIC_WS_URL=ws://localhost:8080` qo'ying. Brauzer mikrofonni faqat `localhost` yoki `https` da beradi.
+> Brauzer mikrofonni faqat `localhost` yoki `https` da beradi. Ommaviy manzil `PUBLIC_URL=auto` bo'lsa tunnel'dan avtomatik olinadi.
 
 ## 3. Docker'siz (dasturlash rejimi)
 
@@ -81,13 +93,13 @@ uvicorn app.main:app --port 8000 --reload          # :8000
 cd web && npm install && npm run dev               # :5173
 ```
 
-Har biri `.env` faylini o'z papkasida yoki ildizda o'qiydi (`server/.env`, `agent/.env`). Lokal rejimda `AGENT_PUBLIC_WS_URL=ws://localhost:8000`.
+Har biri `.env` faylini o'z papkasida o'qiydi (`server/.env`, `agent/.env`). Vite `/api` va `/ws` ni 4000 va 8000 portlarga yo'naltiradi.
 
 ## 4. Telefonga ulash (Twilio)
 
-Serverda HTTPS domen kerak (Twilio `wss://` ga ulanadi). Masalan Caddy yoki Nginx + Let's Encrypt bilan `web` konteynerining 8080 portini domenga chiqaring.
+Twilio `wss://` manzilga ulanadi. Standart holatda buni `tunnel` servisi beradi. O'z domeningiz bo'lsa, `web` konteynerining 8080 portini domenga chiqaring va `.env` da `PUBLIC_URL=https://domen.uz` yozing.
 
-**Kiruvchi:** Twilio Console → raqam → *A call comes in* → Webhook `POST https://SIZNING-DOMEN/twilio/incoming`. Dashboardda agentga aynan shu raqamni (`+1…` formatida) yozing va “Kiruvchi” ni yoqing.
+**Kiruvchi:** Twilio Console → raqam → *A call comes in* → Webhook `POST <dashboard'dagi Twilio webhook manzili>`. Dashboardda agentga aynan shu raqamni (`+1…` formatida) yozing va “Kiruvchi” ni yoqing.
 
 **Chiquvchi (kampaniya):** agentda “Kampaniyalarda o'zi qo'ng'iroq qiladi” ni yoqing → Kampaniyalar → raqamlarni qo'ying → **Boshlash**. Dialer har 5 soniyada bo'sh joyga qarab qo'ng'iroq qiladi; band yoki javob bermaganlarni qayta navbatga qo'yadi.
 

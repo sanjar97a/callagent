@@ -72,7 +72,8 @@ export default function TestCall({ agent, onClose }) {
     setError('');
     setLines([]);
     try {
-      const { ws_url } = await api(`/agents/${agent.id}/test-session`, { method: 'POST' });
+      const { ws_path } = await api(`/agents/${agent.id}/test-session`, { method: 'POST' });
+      const ws_url = `${location.protocol === 'https:' ? 'wss' : 'ws'}://${location.host}${ws_path}`;
       const stream = await navigator.mediaDevices.getUserMedia({
         audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true },
       });

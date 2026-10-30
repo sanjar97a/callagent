@@ -12,7 +12,7 @@ services:
     healthcheck:
       test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-p${DB_PASSWORD}"]
       interval: 5s
-      retries: 20
+      retries: 30
     restart: unless-stopped
 
   server:
@@ -21,6 +21,7 @@ services:
     environment:
       DB_HOST: mysql
       DB_USER: root
+      TUNNEL_METRICS_URL: http://tunnel:2000
     depends_on:
       mysql:
         condition: service_healthy
@@ -31,6 +32,7 @@ services:
     env_file: .env
     environment:
       BACKEND_URL: http://server:4000
+      TUNNEL_METRICS_URL: http://tunnel:2000
     depends_on:
       - server
     restart: unless-stopped
@@ -42,6 +44,16 @@ services:
     depends_on:
       - server
       - agent
+    restart: unless-stopped
+
+  # Kompyuterni internetga chiqaradi (Twilio shu orqali ulanadi).
+  # Manzil har ishga tushganda o'zgaradi; server va agent uni avtomatik o'qiydi.
+  # O'z domeningiz bo'lsa: .env da PUBLIC_URL=https://domen.uz va bu servisni o'chiring.
+  tunnel:
+    image: cloudflare/cloudflared:latest
+    command: tunnel --no-autoupdate --metrics 0.0.0.0:2000 --url http://web:80
+    depends_on:
+      - web
     restart: unless-stopped
 
 volumes:

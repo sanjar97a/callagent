@@ -22,6 +22,11 @@ Telefon / Brauzer ──audio──▶ Agent ishchisi (Python, Pipecat)
 | `web/` | Boshqaruv paneli | React 18, Vite |
 | `db/` | Sxema va namunaviy 2 ta agent | MySQL 8 |
 
+## Agent rejimlari (`AGENT_ENGINE`)
+
+- **`gemini_live`** (standart): Gemini Live o'zi eshitadi, o'ylaydi va gapiradi. Faqat `GOOGLE_API_KEY` kerak, nutq yozuvi `uz-UZ`/`ru-RU` ga belgilangan.
+- **`yandex`**: Yandex SpeechKit STT/TTS + Gemini matn modeli. Yandex Cloud'da billing va servis akkauntga `ai.speechkit-stt.user`, `ai.speechkit-tts.user` rollari kerak.
+
 ## Imkoniyatlar
 
 - **Agentlar:** prompt, birinchi gap, ovoz (nigora, zamira, yulduz), ohang, tezlik, kiruvchi/chiquvchi, yoqish/o'chirish.

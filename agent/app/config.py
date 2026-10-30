@@ -18,6 +18,12 @@ class Settings:
 
     google_api_key = os.getenv("GOOGLE_API_KEY", "")
     gemini_model = os.getenv("GEMINI_MODEL", "gemini-2.5-flash")
+    # gemini_live = faqat Gemini (eshitadi va gapiradi); yandex = Yandex STT/TTS + Gemini matn
+    engine = (os.getenv("AGENT_ENGINE") or "gemini_live").strip().lower()
+    gemini_live_model = os.getenv("GEMINI_LIVE_MODEL") or "models/gemini-3.8-live"
+    if not gemini_live_model.startswith("models/"):
+        gemini_live_model = "models/" + gemini_live_model
+    transcribe_langs = os.getenv("TRANSCRIBE_LANGS", "uz-UZ,ru-RU")
     google_stt_credentials_path = os.getenv("GOOGLE_APPLICATION_CREDENTIALS")
     google_stt_location = os.getenv("GOOGLE_STT_LOCATION", "us-central1")
     google_stt_model = os.getenv("GOOGLE_STT_MODEL", "chirp_2")

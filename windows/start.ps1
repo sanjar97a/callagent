@@ -77,7 +77,9 @@ if ($firstRun) {
 
 $envLines = [System.IO.File]::ReadAllLines($envPath, $Utf8)
 $missing = @()
-foreach ($k in 'GOOGLE_API_KEY', 'YANDEX_API_KEY', 'YANDEX_FOLDER_ID') {
+$required = @('GOOGLE_API_KEY')
+if ((Read-EnvValue $envLines 'AGENT_ENGINE') -eq 'yandex') { $required += 'YANDEX_API_KEY', 'YANDEX_FOLDER_ID' }
+foreach ($k in $required) {
     if (-not (Read-EnvValue $envLines $k)) { $missing += $k }
 }
 if ($missing.Count -gt 0) {

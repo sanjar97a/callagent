@@ -39,6 +39,8 @@ Muhim qoidalar (ovozli suhbat):
 - Bir vaqtda faqat bitta savol ber.
 - Mijoz gapini tushunmasang, muloyim qayta so'ra (shovqin bo'lishi mumkin).
 - Mijoz rus tilida gapirsa, rus tilida javob ber.
+- Mijoz har doim o'zbek yoki rus tilida gapiradi (sheva, shovqin bo'lishi mumkin). Nutqi boshqa tilga o'xshasa ham o'zbekcha deb qabul qil, mijozdan boshqa tilda gapirishni hech qachon so'rama.
+- Ism, raqam, vaqt kabi ma'lumotni saqlashdan oldin qaytarib aytib, tasdiqlat.
 """
 
 
@@ -95,22 +97,7 @@ async def run_call(
     result: dict = {}
     ended_by = {"value": "user"}
 
-    stt = make_stt(session, agent)
-    tts = YandexTTSService(
-        api_key=settings.yandex_api_key,
-        folder_id=settings.yandex_folder_id,
-        session=session,
-        voice=agent.get("voice") or "nigora",
-        role=agent.get("voice_role") or None,
-        speed=float(agent.get("speed") or 1.0),
-    )
-    llm = GoogleLLMService(
-        api_key=settings.google_api_key,
-        settings=GoogleLLMService.Settings(
-            model=settings.gemini_model,
-            system_instruction=build_system_prompt(agent),
-        ),
-    )
+    live = settings.engine != "yandex"
 
     # --- Tool'lar ---
     tools = []
@@ -153,17 +140,41 @@ async def run_call(
             )
         )
 
-    context = LLMContext(tools=tools) if tools else LLMContext()
-    user_agg, assistant_agg = LLMContextAggregatorPair(
-        context,
-        user_params=LLMUserAggregatorParams(
-            vad_analyzer=SileroVADAnalyzer(params=VADParams(stop_secs=0.6, min_volume=0.5)),
-        ),
-    )
+    if live:
+        # Gemini Live: tinglash, javob va ovoz bitta modelda; VAD ham Gemini tomonida
+        from .gemini_live import make_gemini_live
 
-    pipeline = Pipeline(
-        [transport.input(), stt, user_agg, llm, tts, transport.output(), assistant_agg]
-    )
+        llm = make_gemini_live(agent, build_system_prompt(agent), tools)
+        context = LLMContext()
+        user_agg, assistant_agg = LLMContextAggregatorPair(context)
+        pipeline = Pipeline([transport.input(), user_agg, llm, transport.output(), assistant_agg])
+    else:
+        stt = make_stt(session, agent)
+        tts = YandexTTSService(
+            api_key=settings.yandex_api_key,
+            folder_id=settings.yandex_folder_id,
+            session=session,
+            voice=agent.get("voice") or "nigora",
+            role=agent.get("voice_role") or None,
+            speed=float(agent.get("speed") or 1.0),
+        )
+        llm = GoogleLLMService(
+            api_key=settings.google_api_key,
+            settings=GoogleLLMService.Settings(
+                model=settings.gemini_model,
+                system_instruction=build_system_prompt(agent),
+            ),
+        )
+        context = LLMContext(tools=tools) if tools else LLMContext()
+        user_agg, assistant_agg = LLMContextAggregatorPair(
+            context,
+            user_params=LLMUserAggregatorParams(
+                vad_analyzer=SileroVADAnalyzer(params=VADParams(stop_secs=0.6, min_volume=0.5)),
+            ),
+        )
+        pipeline = Pipeline(
+            [transport.input(), stt, user_agg, llm, tts, transport.output(), assistant_agg]
+        )
     worker = PipelineWorker(
         pipeline,
         params=PipelineParams(
@@ -199,7 +210,16 @@ async def run_call(
     @transport.event_handler("on_client_connected")
     async def _on_connected(transport, client):
         first = agent.get("first_message")
-        if first:
+        if live:
+            # Live modelda alohida TTS yo'q: birinchi gapni modelning o'ziga aytdiramiz
+            hint = (
+                f"(Qo'ng'iroq ulandi, mijoz go'shakni ko'tardi. Aynan shu gap bilan boshla: \"{first}\")"
+                if first
+                else "(Qo'ng'iroq ulandi, mijoz go'shakni ko'tardi. Salomlashib, o'zingni tanishtir.)"
+            )
+            context.add_message({"role": "user", "content": hint})
+            await worker.queue_frames([LLMRunFrame()])
+        elif first:
             # TTSSpeakFrame matnni kontekstga o'zi qo'shadi; transkript assistant hodisasidan keladi
             await worker.queue_frames([TTSSpeakFrame(first)])
         else:

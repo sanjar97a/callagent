@@ -121,28 +121,28 @@
 
     <label>Gemini API kaliti
       <span class="key-row">
-        <input id="apiKey" type="password" placeholder="AIza…" spellcheck="false" />
+        <input id="apiKey" type="password" autocomplete="off" placeholder="AIza…" spellcheck="false" />
         <button type="button" class="link" id="toggleKey">Ko‘rsatish</button>
       </span>
       <span class="hint">Kalit faqat shu brauzerda saqlanadi va to‘g‘ridan-to‘g‘ri Google’ga yuboriladi. <a href="https://aistudio.google.com/apikey" target="_blank" rel="noopener">Kalit olish</a></span>
     </label>
 
     <label>Tayyor agent
-      <select id="preset"></select>
+      <select id="preset" autocomplete="off"></select>
     </label>
 
     <label>Vazifa (prompt)
-      <textarea id="prompt" rows="9"></textarea>
+      <textarea id="prompt" autocomplete="off" rows="9"></textarea>
     </label>
 
     <label>Yig‘iladigan ma’lumotlar
-      <textarea id="fields" rows="3" placeholder="nps: Mijoz bergan baho, 1 dan 10 gacha"></textarea>
+      <textarea id="fields" autocomplete="off" rows="3" placeholder="nps: Mijoz bergan baho, 1 dan 10 gacha"></textarea>
       <span class="hint">Har qatorda bitta: <b>nom: tavsif</b>. Agent suhbatda aniqlab, o‘ng tomondagi “Natija”ga yozadi.</span>
     </label>
 
     <div class="row2">
       <label>Ovoz
-        <select id="voice">
+        <select id="voice" autocomplete="off">
           <option value="Kore">Kore (ayol)</option>
           <option value="Aoede">Aoede (ayol)</option>
           <option value="Leda">Leda (ayol)</option>
@@ -154,7 +154,7 @@
         </select>
       </label>
       <label>Kim boshlaydi
-        <select id="opener">
+        <select id="opener" autocomplete="off">
           <option value="agent">Agent salomlashadi</option>
           <option value="user">Men gapiraman</option>
         </select>
@@ -164,7 +164,7 @@
     <details>
       <summary>Qo‘shimcha</summary>
       <label>Model
-        <select id="model">
+        <select id="model" autocomplete="off">
           <option value="gemini-3.8-live">gemini-3.8-live (tavsiya)</option>
           <option value="gemini-3.1-flash-live-preview">gemini-3.1-flash-live-preview</option>
           <option value="gemini-2.5-flash-native-audio-preview-12-2025">gemini-2.5-flash-native-audio-preview-12-2025</option>
@@ -255,10 +255,12 @@ Mijozni navbatga yoz: ismi, kuni, vaqti va xizmat turini aniqla. Oxirida hammasi
 
   const SPEECH_RULES = `
 Ovozli suhbat qoidalari:
-- Faqat o‘zbek tilida (lotin) gapir. Mijoz rus tilida gapirsa, rus tilida javob ber.
+- Faqat o‘zbek tilida gapir. Mijoz rus tilida gapirsa, rus tilida javob ber.
+- Mijoz har doim o‘zbek yoki rus tilida gapiradi (sheva, shovqin bo‘lishi mumkin). Nutqi boshqa tilga o‘xshab eshitilsa ham, uni o‘zbekcha deb qabul qil. Hech qachon mijozdan boshqa tilda gapirishni so‘rama.
 - Javoblaring qisqa bo‘lsin: bir-ikki gap. Bir vaqtda faqat bitta savol ber.
 - Raqamlarni so‘z bilan ayt. Ro‘yxat yoki maxsus belgilar ishlatma.
-- Mijoz gapini aniq eshitmasang (shovqin bo‘lishi mumkin), muloyim qayta so‘ra.`;
+- Mijoz gapini aniq eshitmasang, muloyim qayta so‘ra.
+- Ism, telefon raqam, vaqt kabi muhim ma’lumotni saqlashdan oldin mijozga qaytarib aytib, tasdiqlat. Ismlar o‘zbekcha bo‘ladi.`;
 
   let result = {}; // agent yig'gan ma'lumotlar
 
@@ -295,6 +297,8 @@ Ovozli suhbat qoidalari:
   el.apiKey.value = store.get('key', '');
   el.model.value = store.get('model', 'gemini-3.8-live');
   applyPreset(store.get('preset', 'nps'));
+  // "Orqaga" bilan qaytilganda brauzer eski qiymatlarni qo'yib yubormasligi uchun
+  window.addEventListener('pageshow', (e) => { if (e.persisted && !S) applyPreset(store.get('preset', 'nps')); });
 
   el.preset.addEventListener('change', () => { store.set('preset', el.preset.value); applyPreset(el.preset.value); });
   el.prompt.addEventListener('input', () => store.set('prompt_' + el.preset.value, el.prompt.value));
@@ -348,6 +352,12 @@ Ovozli suhbat qoidalari:
     el.log.scrollTop = el.log.scrollHeight;
   }
   function closeTurn(role) { lastBubble[role] = null; }
+
+  // O'zbek/rus nutqida lotin va kirildan boshqa harf bo'lmaydi; bo'lsa — tanib olish adashgan
+  const FOREIGN = /[^\u0000-\u024F\u0400-\u04FF\u2000-\u206F\u2018\u2019\u02BB\u02BC]/;
+  function cleanUserText(t) {
+    return FOREIGN.test(t) ? ' … ' : t;
+  }
 
   function showError(msg) {
     el.errorBox.textContent = msg;
@@ -446,7 +456,8 @@ Ovozli suhbat qoidalari:
     S.outLevel = 0;
   }
 
-  function buildSetup(fields) {
+  const TRANSCRIBE_LANGS = ['uz-UZ', 'ru-RU'];
+  function buildSetup(fields, strictLang) {
     const tools = [{
       functionDeclarations: [
         ...(fields.length ? [{
@@ -478,7 +489,8 @@ Ovozli suhbat qoidalari:
         },
         systemInstruction: { parts: [{ text: system }] },
         tools,
-        inputAudioTranscription: {},
+        // Tilni belgilamasa, tanib olish o'zbekchani golland/koreys deb adashtiradi
+        inputAudioTranscription: strictLang ? { languageCodes: TRANSCRIBE_LANGS } : {},
         outputAudioTranscription: {},
       },
     };
@@ -506,7 +518,8 @@ Ovozli suhbat qoidalari:
     el.emptyLog.classList.remove('hidden');
     lastBubble = { user: null, assistant: null };
 
-    S = { playing: new Set(), playAt: 0, inLevel: 0, outLevel: 0, ready: false, startedAt: 0, hangupAfterSpeech: false };
+    S = { playing: new Set(), playAt: 0, inLevel: 0, outLevel: 0, ready: false, startedAt: 0, hangupAfterSpeech: false,
+          strictLang: true };
     setControls(true);
     setState('Mikrofonga ruxsat so‘ralmoqda…');
 
@@ -534,6 +547,10 @@ Ovozli suhbat qoidalari:
       return endCall(null);
     }
 
+    connect(key, fields);
+  }
+
+  function connect(key, fields) {
     setState('Gemini’ga ulanmoqda…');
     const ws = new WebSocket(
       'wss://generativelanguage.googleapis.com/ws/google.ai.generativelanguage.v1beta.GenerativeService.BidiGenerateContent?key=' +
@@ -541,13 +558,13 @@ Ovozli suhbat qoidalari:
     );
     S.ws = ws;
 
-    ws.onopen = () => ws.send(JSON.stringify(buildSetup(fields)));
+    ws.onopen = () => ws.send(JSON.stringify(buildSetup(fields, S.strictLang)));
 
     S.node.port.onmessage = (e) => {
       if (!S) return;
       S.inLevel = e.data.level;
-      if (S.ready && ws.readyState === WebSocket.OPEN) {
-        ws.send(JSON.stringify({ realtimeInput: { audio: { data: b64FromBuffer(e.data.pcm), mimeType: 'audio/pcm;rate=' + IN_RATE } } }));
+      if (S.ready && S.ws.readyState === WebSocket.OPEN) {
+        S.ws.send(JSON.stringify({ realtimeInput: { audio: { data: b64FromBuffer(e.data.pcm), mimeType: 'audio/pcm;rate=' + IN_RATE } } }));
       }
     };
 
@@ -562,6 +579,11 @@ Ovozli suhbat qoidalari:
     ws.onclose = (ev) => {
       if (!S || S.ws !== ws) return;
       if (S.closingByUs) return;
+      // Model transkripsiya tilini qabul qilmasa — tilsiz sozlama bilan bir marta qayta ulanamiz
+      if (!S.ready && S.strictLang && /language|transcription|unknown name|invalid/i.test(ev.reason || '')) {
+        S.strictLang = false;
+        return connect(key, fields);
+      }
       if (!S.ready || ev.code !== 1000) showError(friendlyClose(ev.code, ev.reason));
       endCall(S.ready ? 'Ulanish yopildi' : null);
     };
@@ -594,7 +616,7 @@ Ovozli suhbat qoidalari:
       }
       if (sc.inputTranscription?.text) {
         closeTurn('assistant');
-        addLine('user', sc.inputTranscription.text, true);
+        addLine('user', cleanUserText(sc.inputTranscription.text), true);
       }
       if (sc.outputTranscription?.text) {
         closeTurn('user');

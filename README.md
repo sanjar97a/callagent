@@ -1,5 +1,7 @@
 # CallAgent — o'zbekcha ovozli AI agentlar
 
+**Jonli demo:** https://sanjar97a.github.io/callagent/ — brauzerda agent bilan gaplashing (faqat Gemini API kaliti kerak, server shart emas).
+
 Telefon qo'ng'iroqlariga AI javob beradigan va o'zi qo'ng'iroq qiladigan tizim. Har bir agentga vazifa (prompt), ovoz va yig'iladigan ma'lumotlar beriladi. Suhbat matni va natijasi (masalan NPS bahosi) bazaga yoziladi.
 
 ```
@@ -30,6 +32,14 @@ Telefon / Brauzer ──audio──▶ Agent ishchisi (Python, Pipecat)
 - **Kiruvchi qo'ng'iroqlar:** agentga raqam biriktirasiz, shu raqamga kelgan qo'ng'iroqqa u javob beradi.
 - **Kampaniyalar:** raqamlar ro'yxati, bir vaqtda nechta qo'ng'iroq, qayta urinishlar soni, jonli jarayon.
 - **Tarix:** har bir qo'ng'iroqning transkripti, natijasi, davomiyligi.
+
+## Brauzer demosi (`index.html`)
+
+Repo ildizidagi `index.html` — serversiz ishlaydigan demo. U Gemini Live API'ga brauzerdan to'g'ridan-to'g'ri ulanadi: mikrofon ovozini yuboradi, agent ovozini ijro etadi, gapni bo'lishni (interrupt) qo'llaydi va `save_result` / `end_call` tool'larini bajaradi. Uchta tayyor agent bor: NPS so'rovchi, qabulxona, sartaroshxona navbati. Prompt, ovoz va yig'iladigan maydonlarni sahifada o'zgartirsa bo'ladi.
+
+- Kalit faqat foydalanuvchi brauzerida saqlanadi. Shuning uchun bu sahifa shaxsiy sinov va mijozlarga ko'rsatish uchun mos, ommaviy xizmat uchun emas.
+- Telefon qo'ng'iroqlari, tarix va kampaniyalar faqat to'liq tizimda (pastda).
+- Lokal ochish: `python3 -m http.server` va `http://localhost:8000` (mikrofon `file://` da ishlamaydi).
 
 ## 1. Kalitlarni olish
 

@@ -1,0 +1,664 @@
+<!doctype html>
+<html lang="uz">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>CallAgent demo</title>
+<meta name="description" content="O‘zbekcha ovozli AI agent — brauzerda sinab ko‘ring" />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Onest:wght@400;500;600;700&display=swap" rel="stylesheet" />
+<style>
+  :root {
+    --steel: #e9edf1;
+    --paper: #ffffff;
+    --ink: #17222c;
+    --ink-2: #5b6b78;
+    --line: #d3dbe2;
+    --signal: #0b5d78;
+    --signal-soft: #dcecf2;
+    --live: #1d8a4d;
+    --live-soft: #def1e5;
+    --warn: #b4441b;
+    --warn-soft: #f8e4da;
+    --r: 14px;
+    font-family: 'Onest', system-ui, sans-serif;
+    font-size: 15px;
+    line-height: 1.5;
+    color: var(--ink);
+    background: var(--steel);
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; min-height: 100vh; }
+  h1, h2 { margin: 0; letter-spacing: -0.01em; }
+  h2 { font-size: 1.02rem; font-weight: 600; }
+  a { color: var(--signal); }
+  :focus-visible { outline: 2px solid var(--signal); outline-offset: 2px; }
+  .muted { color: var(--ink-2); }
+  .small { font-size: 0.84rem; }
+
+  .top { background: var(--ink); color: #fff; padding: 14px 24px; display: flex; align-items: center; gap: 12px; }
+  .brand { display: flex; align-items: center; gap: 10px; font-weight: 700; font-size: 1.1rem; }
+  .brand-mark { display: inline-flex; align-items: center; gap: 2px; height: 20px; }
+  .brand-mark i { width: 3px; border-radius: 2px; background: #6fd1a0; }
+  .brand-mark i:nth-child(1) { height: 8px; } .brand-mark i:nth-child(2) { height: 18px; }
+  .brand-mark i:nth-child(3) { height: 12px; } .brand-mark i:nth-child(4) { height: 6px; }
+  .top .tagline { color: #9fb0bd; font-size: 0.88rem; margin-left: auto; }
+  .top a { color: #9fb0bd; font-size: 0.88rem; }
+
+  .wrap { max-width: 1180px; margin: 0 auto; padding: 28px 24px 64px; display: grid; grid-template-columns: 380px 1fr; gap: 20px; align-items: start; }
+  .panel { background: var(--paper); border: 1px solid var(--line); border-radius: var(--r); padding: 20px; display: flex; flex-direction: column; gap: 14px; }
+
+  label { display: flex; flex-direction: column; gap: 6px; font-weight: 500; font-size: 0.88rem; }
+  input, select, textarea { font: inherit; font-weight: 400; color: var(--ink); background: var(--paper); border: 1px solid var(--line); border-radius: 6px; padding: 9px 11px; width: 100%; }
+  textarea { resize: vertical; line-height: 1.5; }
+  input:focus, select:focus, textarea:focus { outline: 2px solid var(--signal-soft); border-color: var(--signal); }
+  input:disabled, select:disabled, textarea:disabled { background: #f3f5f7; color: var(--ink-2); }
+  .hint { font-weight: 400; color: var(--ink-2); font-size: 0.8rem; }
+  .row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  .key-row { display: flex; gap: 8px; }
+  .key-row input { flex: 1; }
+  .link { background: none; border: 0; padding: 0; font: inherit; color: var(--signal); font-weight: 500; cursor: pointer; white-space: nowrap; }
+  .link:hover { text-decoration: underline; }
+  details summary { cursor: pointer; font-weight: 500; font-size: 0.88rem; color: var(--signal); }
+  details[open] summary { margin-bottom: 12px; }
+
+  /* ---------- Qo'ng'iroq maydoni ---------- */
+  .call { padding: 0; overflow: hidden; gap: 0; }
+  .stage { background: var(--ink); color: #fff; padding: 28px 24px 24px; display: flex; flex-direction: column; align-items: center; gap: 18px; }
+  .who { text-align: center; }
+  .who h1 { font-size: 1.5rem; }
+  .who p { margin: 4px 0 0; color: #9fb0bd; font-size: 0.9rem; font-variant-numeric: tabular-nums; }
+  .meter { display: flex; align-items: center; justify-content: center; gap: 5px; height: 72px; width: 100%; }
+  .meter i { width: 6px; border-radius: 3px; background: #3a4b59; height: 8px; transition: height 0.08s linear, background 0.2s; }
+  .stage.live .meter i { background: #6fd1a0; }
+  .stage.live.user-speaking .meter i { background: #8fc7dd; }
+  .call-btn { font: inherit; font-weight: 600; font-size: 1rem; border: 0; border-radius: 999px; padding: 14px 32px; cursor: pointer; color: #fff; background: var(--live); min-width: 220px; }
+  .call-btn:hover:not(:disabled) { background: #187a43; }
+  .call-btn.end { background: var(--warn); }
+  .call-btn.end:hover { background: #9a3815; }
+  .call-btn:disabled { opacity: 0.55; cursor: not-allowed; }
+  .state-line { font-size: 0.86rem; color: #9fb0bd; min-height: 1.3em; text-align: center; }
+
+  .body { display: grid; grid-template-columns: 1fr 260px; }
+  .log { padding: 18px 20px; display: flex; flex-direction: column; gap: 8px; height: 380px; overflow-y: auto; border-right: 1px solid var(--line); }
+  .bubble { max-width: 82%; padding: 9px 13px; border-radius: 12px; line-height: 1.45; white-space: pre-wrap; }
+  .bubble.assistant { background: var(--steel); align-self: flex-start; border-bottom-left-radius: 4px; }
+  .bubble.user { background: var(--signal); color: #fff; align-self: flex-end; border-bottom-right-radius: 4px; }
+  .bubble.system { align-self: center; background: none; color: var(--ink-2); font-size: 0.82rem; padding: 2px; }
+  .empty-log { color: var(--ink-2); margin: auto; text-align: center; max-width: 340px; }
+  .result { padding: 18px 20px; display: flex; flex-direction: column; gap: 12px; }
+  .kv { margin: 0; display: flex; flex-direction: column; gap: 10px; }
+  .kv dt { font-size: 0.8rem; color: var(--ink-2); }
+  .kv dd { margin: 0; font-weight: 600; }
+  .kv dd.pending { font-weight: 400; color: #a9b5bf; }
+
+  .error { background: var(--warn-soft); color: var(--warn); padding: 10px 14px; border-radius: 6px; font-size: 0.9rem; }
+  .note { background: var(--signal-soft); color: var(--signal); padding: 10px 14px; border-radius: 6px; font-size: 0.86rem; }
+  .hidden { display: none !important; }
+
+  @media (prefers-reduced-motion: reduce) { .meter i { transition: none; } }
+  @media (max-width: 900px) {
+    .wrap { grid-template-columns: 1fr; padding: 16px 16px 48px; }
+    .call { order: -1; }
+    .body { grid-template-columns: 1fr; }
+    .log { border-right: 0; border-bottom: 1px solid var(--line); height: 320px; }
+    .top .tagline { display: none; }
+  }
+</style>
+</head>
+<body>
+<header class="top">
+  <span class="brand"><span class="brand-mark" aria-hidden="true"><i></i><i></i><i></i><i></i></span>CallAgent</span>
+  <span class="tagline">O‘zbekcha ovozli AI agent — brauzerda sinov</span>
+  <a href="https://github.com/sanjar97a/callagent">GitHub</a>
+</header>
+
+<main class="wrap">
+  <!-- ---------- Sozlamalar ---------- -->
+  <form class="panel" id="settings" autocomplete="off" onsubmit="return false">
+    <h2>Agent sozlamalari</h2>
+
+    <label>Gemini API kaliti
+      <span class="key-row">
+        <input id="apiKey" type="password" placeholder="AIza…" spellcheck="false" />
+        <button type="button" class="link" id="toggleKey">Ko‘rsatish</button>
+      </span>
+      <span class="hint">Kalit faqat shu brauzerda saqlanadi va to‘g‘ridan-to‘g‘ri Google’ga yuboriladi. <a href="https://aistudio.google.com/apikey" target="_blank" rel="noopener">Kalit olish</a></span>
+    </label>
+
+    <label>Tayyor agent
+      <select id="preset"></select>
+    </label>
+
+    <label>Vazifa (prompt)
+      <textarea id="prompt" rows="9"></textarea>
+    </label>
+
+    <label>Yig‘iladigan ma’lumotlar
+      <textarea id="fields" rows="3" placeholder="nps: Mijoz bergan baho, 1 dan 10 gacha"></textarea>
+      <span class="hint">Har qatorda bitta: <b>nom: tavsif</b>. Agent suhbatda aniqlab, o‘ng tomondagi “Natija”ga yozadi.</span>
+    </label>
+
+    <div class="row2">
+      <label>Ovoz
+        <select id="voice">
+          <option value="Kore">Kore (ayol)</option>
+          <option value="Aoede">Aoede (ayol)</option>
+          <option value="Leda">Leda (ayol)</option>
+          <option value="Zephyr">Zephyr (ayol)</option>
+          <option value="Puck">Puck (erkak)</option>
+          <option value="Charon">Charon (erkak)</option>
+          <option value="Fenrir">Fenrir (erkak)</option>
+          <option value="Orus">Orus (erkak)</option>
+        </select>
+      </label>
+      <label>Kim boshlaydi
+        <select id="opener">
+          <option value="agent">Agent salomlashadi</option>
+          <option value="user">Men gapiraman</option>
+        </select>
+      </label>
+    </div>
+
+    <details>
+      <summary>Qo‘shimcha</summary>
+      <label>Model
+        <select id="model">
+          <option value="gemini-3.8-live">gemini-3.8-live (tavsiya)</option>
+          <option value="gemini-3.1-flash-live-preview">gemini-3.1-flash-live-preview</option>
+          <option value="gemini-2.5-flash-native-audio-preview-12-2025">gemini-2.5-flash-native-audio-preview-12-2025</option>
+        </select>
+        <span class="hint">Biri ishlamasa, boshqasini tanlab ko‘ring: kalitingizga qaysi model ochiqligi farq qilishi mumkin.</span>
+      </label>
+    </details>
+
+    <p class="note">Bu sinov sahifasi: haqiqiy telefon qo‘ng‘iroqlari, tarix va kampaniyalar to‘liq tizimda (server talab qiladi).</p>
+  </form>
+
+  <!-- ---------- Qo'ng'iroq ---------- -->
+  <section class="panel call" aria-live="polite">
+    <div class="stage" id="stage">
+      <div class="who">
+        <h1 id="agentName">Agent</h1>
+        <p id="timer">Qo‘ng‘iroq boshlanmagan</p>
+      </div>
+      <div class="meter" id="meter" aria-hidden="true"></div>
+      <button class="call-btn" id="callBtn" type="button">Qo‘ng‘iroqni boshlash</button>
+      <div class="state-line" id="stateLine">Mikrofon va kalit kerak bo‘ladi</div>
+    </div>
+    <div id="errorBox" class="error hidden" role="alert" style="margin:16px 20px 0"></div>
+    <div class="body">
+      <div class="log" id="log">
+        <p class="empty-log" id="emptyLog">Qo‘ng‘iroqni boshlang va agent bilan o‘zbekcha gaplashing. Uning gapini bo‘lsangiz, darhol jim bo‘ladi.</p>
+      </div>
+      <aside class="result">
+        <h2>Natija</h2>
+        <dl class="kv" id="resultList"></dl>
+        <p class="muted small" id="resultEmpty">Bu agent uchun yig‘iladigan maydon yo‘q.</p>
+      </aside>
+    </div>
+  </section>
+</main>
+
+<script>
+(() => {
+  'use strict';
+
+  // ---------- Tayyor agentlar ----------
+  const PRESETS = [
+    {
+      id: 'nps',
+      name: 'Aziza — NPS so‘rovchi',
+      voice: 'Kore',
+      opener: 'agent',
+      fields: 'nps: Mijoz bergan baho, 1 dan 10 gacha\nizoh: Mijozning fikri yoki shikoyati',
+      prompt:
+`Sen Aziza, "Arzon Savdo" do‘konining mijozlar bilan ishlash bo‘limi operatorisan. Mijoz yaqinda do‘kondan xarid qilgan.
+Vazifang: mijozdan xizmatimizni 1 dan 10 gacha baholashini so‘rash.
+Agar baho 7 dan past bo‘lsa, nima yoqmaganini muloyimlik bilan so‘ra. Baho yuqori bo‘lsa, minnatdorchilik bildir.
+Bahsga kirishma, va’da berma. Suhbat ikki daqiqadan oshmasin.`,
+    },
+    {
+      id: 'reception',
+      name: 'Qabulxona — kiruvchi qo‘ng‘iroq',
+      voice: 'Aoede',
+      opener: 'agent',
+      fields: 'ism: Mijozning ismi\ntelefon: Qayta aloqa uchun raqam\nmavzu: Murojaat mavzusi qisqacha',
+      prompt:
+`Sen "Namangan Texno" kompaniyasi qabulxonasi operatorisan. Kompaniya maishiy texnika sotadi va yetkazib beradi.
+Ish vaqti: dushanbadan shanbagacha, 9:00 dan 18:00 gacha. Manzil: Namangan shahri, Navoiy ko‘chasi.
+Yetkazib berish shahar ichida bepul, viloyatga 50 ming so‘m.
+Mijozning ismi, telefon raqami va murojaat mavzusini aniqla.
+Bilmagan savolingga javob o‘ylab topma: mutaxassis qayta qo‘ng‘iroq qilishini ayt.`,
+    },
+    {
+      id: 'barber',
+      name: 'Sartarosh — navbatga yozish',
+      voice: 'Puck',
+      opener: 'agent',
+      fields: 'ism: Mijozning ismi\nkun: Qaysi kunga\nvaqt: Soat nechaga\nxizmat: Soch olish, soqol yoki ikkalasi',
+      prompt:
+`Sen "Usta Barber" sartaroshxonasining navbatchisisan. Ish vaqti har kuni 10:00 dan 21:00 gacha.
+Narxlar: soch olish 60 ming, soqol 30 ming, ikkalasi 80 ming so‘m.
+Mijozni navbatga yoz: ismi, kuni, vaqti va xizmat turini aniqla. Oxirida hammasini qisqa takrorlab tasdiqlat.`,
+    },
+    {
+      id: 'custom',
+      name: 'O‘zim yozaman',
+      voice: 'Kore',
+      opener: 'agent',
+      fields: '',
+      prompt: 'Sen muloyim telefon operatorisan. ',
+    },
+  ];
+
+  const SPEECH_RULES = `
+Ovozli suhbat qoidalari:
+- Faqat o‘zbek tilida (lotin) gapir. Mijoz rus tilida gapirsa, rus tilida javob ber.
+- Javoblaring qisqa bo‘lsin: bir-ikki gap. Bir vaqtda faqat bitta savol ber.
+- Raqamlarni so‘z bilan ayt. Ro‘yxat yoki maxsus belgilar ishlatma.
+- Mijoz gapini aniq eshitmasang (shovqin bo‘lishi mumkin), muloyim qayta so‘ra.`;
+
+  let result = {}; // agent yig'gan ma'lumotlar
+
+  // ---------- Elementlar ----------
+  const $ = (id) => document.getElementById(id);
+  const el = {
+    apiKey: $('apiKey'), toggleKey: $('toggleKey'), preset: $('preset'), prompt: $('prompt'),
+    fields: $('fields'), voice: $('voice'), opener: $('opener'), model: $('model'),
+    agentName: $('agentName'), timer: $('timer'), meter: $('meter'), callBtn: $('callBtn'),
+    stateLine: $('stateLine'), stage: $('stage'), log: $('log'), emptyLog: $('emptyLog'),
+    errorBox: $('errorBox'), resultList: $('resultList'), resultEmpty: $('resultEmpty'),
+  };
+  const BARS = 28;
+  for (let i = 0; i < BARS; i++) el.meter.appendChild(document.createElement('i'));
+  const bars = [...el.meter.children];
+
+  // ---------- Saqlash (try/catch: ba'zi brauzer rejimlarida localStorage yo'q) ----------
+  const store = {
+    get(k, d) { try { const v = localStorage.getItem('ca_demo_' + k); return v === null ? d : v; } catch { return d; } },
+    set(k, v) { try { localStorage.setItem('ca_demo_' + k, v); } catch { /* jim */ } },
+  };
+
+  PRESETS.forEach((p) => el.preset.add(new Option(p.name, p.id)));
+  function applyPreset(id) {
+    const p = PRESETS.find((x) => x.id === id) || PRESETS[0];
+    el.preset.value = p.id;
+    el.prompt.value = store.get('prompt_' + p.id, p.prompt);
+    el.fields.value = store.get('fields_' + p.id, p.fields);
+    el.voice.value = store.get('voice_' + p.id, p.voice);
+    el.opener.value = p.opener;
+    el.agentName.textContent = p.id === 'custom' ? 'Mening agentim' : p.name.split(' — ')[0];
+    renderResultSkeleton();
+  }
+  el.apiKey.value = store.get('key', '');
+  el.model.value = store.get('model', 'gemini-3.8-live');
+  applyPreset(store.get('preset', 'nps'));
+
+  el.preset.addEventListener('change', () => { store.set('preset', el.preset.value); applyPreset(el.preset.value); });
+  el.prompt.addEventListener('input', () => store.set('prompt_' + el.preset.value, el.prompt.value));
+  el.fields.addEventListener('input', () => { store.set('fields_' + el.preset.value, el.fields.value); renderResultSkeleton(); });
+  el.voice.addEventListener('change', () => store.set('voice_' + el.preset.value, el.voice.value));
+  el.apiKey.addEventListener('input', () => store.set('key', el.apiKey.value.trim()));
+  el.model.addEventListener('change', () => store.set('model', el.model.value));
+  el.toggleKey.addEventListener('click', () => {
+    const show = el.apiKey.type === 'password';
+    el.apiKey.type = show ? 'text' : 'password';
+    el.toggleKey.textContent = show ? 'Yashirish' : 'Ko‘rsatish';
+  });
+
+  // ---------- Natija maydonlari ----------
+  function parseFields() {
+    return el.fields.value.split('\n').map((line) => {
+      const i = line.indexOf(':');
+      const raw = (i >= 0 ? line.slice(0, i) : line).trim();
+      const name = raw.replace(/[^a-zA-Z0-9_]/g, '_').replace(/^_+|_+$/g, '');
+      return name ? { name, description: (i >= 0 ? line.slice(i + 1) : raw).trim() || name } : null;
+    }).filter(Boolean);
+  }
+  function renderResultSkeleton() {
+    const fields = parseFields();
+    el.resultList.innerHTML = '';
+    el.resultEmpty.classList.toggle('hidden', fields.length > 0);
+    for (const f of fields) {
+      const wrap = document.createElement('div');
+      const dt = document.createElement('dt'); dt.textContent = f.description;
+      const dd = document.createElement('dd'); dd.dataset.field = f.name;
+      const v = result[f.name];
+      dd.textContent = v ? v : 'aniqlanmagan'; dd.classList.toggle('pending', !v);
+      wrap.append(dt, dd); el.resultList.appendChild(wrap);
+    }
+  }
+
+  // ---------- Suhbat logi ----------
+  let lastBubble = { user: null, assistant: null };
+  function addLine(role, text, append = false) {
+    if (!text) return;
+    el.emptyLog.classList.add('hidden');
+    if (append && lastBubble[role]) {
+      lastBubble[role].textContent += text;
+    } else {
+      const b = document.createElement('div');
+      b.className = 'bubble ' + role;
+      b.textContent = text;
+      el.log.appendChild(b);
+      if (role !== 'system') lastBubble[role] = b;
+    }
+    el.log.scrollTop = el.log.scrollHeight;
+  }
+  function closeTurn(role) { lastBubble[role] = null; }
+
+  function showError(msg) {
+    el.errorBox.textContent = msg;
+    el.errorBox.classList.toggle('hidden', !msg);
+  }
+  function setState(text) { el.stateLine.textContent = text; }
+
+  // ---------- Audio ----------
+  const IN_RATE = 16000;
+  const OUT_RATE = 24000;
+  const WORKLET = `
+  class Capture extends AudioWorkletProcessor {
+    constructor() { super(); this.buf = []; this.ratio = sampleRate / ${IN_RATE}; this.pos = 0; this.level = 0; }
+    process(inputs) {
+      const ch = inputs[0][0];
+      if (!ch) return true;
+      let peak = 0;
+      for (let i = 0; i < ch.length; i++) { const a = Math.abs(ch[i]); if (a > peak) peak = a; }
+      this.level = Math.max(peak, this.level * 0.9);
+      for (; this.pos < ch.length; this.pos += this.ratio) {
+        const s = Math.max(-1, Math.min(1, ch[Math.floor(this.pos)]));
+        this.buf.push(s < 0 ? s * 0x8000 : s * 0x7fff);
+      }
+      this.pos -= ch.length;
+      if (this.buf.length >= ${IN_RATE / 25}) {   // ~40 ms bo'laklar
+        const out = Int16Array.from(this.buf);
+        this.port.postMessage({ pcm: out.buffer, level: this.level }, [out.buffer]);
+        this.buf = [];
+      }
+      return true;
+    }
+  }
+  registerProcessor('capture', Capture);`;
+
+  function b64FromBuffer(buf) {
+    const bytes = new Uint8Array(buf);
+    let s = '';
+    for (let i = 0; i < bytes.length; i += 0x8000) s += String.fromCharCode.apply(null, bytes.subarray(i, i + 0x8000));
+    return btoa(s);
+  }
+  function bufferFromB64(b64) {
+    const s = atob(b64);
+    const out = new Uint8Array(s.length);
+    for (let i = 0; i < s.length; i++) out[i] = s.charCodeAt(i);
+    return out.buffer;
+  }
+
+  // ---------- Qo'ng'iroq holati ----------
+  let S = null; // joriy sessiya
+
+  function resetMeter() { bars.forEach((b) => (b.style.height = '8px')); }
+  function drawMeter() {
+    if (!S) return;
+    const now = performance.now();
+    const speaking = S.playing.size > 0;
+    const level = speaking ? S.outLevel : S.inLevel;
+    el.stage.classList.toggle('user-speaking', !speaking && S.inLevel > 0.06);
+    bars.forEach((b, i) => {
+      const wave = 0.55 + 0.45 * Math.sin(now / 140 + i * 0.7);
+      const center = 1 - Math.abs(i - BARS / 2) / (BARS / 2);
+      const h = 8 + Math.min(1, level * 2.2) * 60 * wave * (0.35 + 0.65 * center);
+      b.style.height = h.toFixed(1) + 'px';
+    });
+    if (S.startedAt) {
+      const sec = Math.floor((Date.now() - S.startedAt) / 1000);
+      el.timer.textContent = `${Math.floor(sec / 60)}:${String(sec % 60).padStart(2, '0')}`;
+    }
+    S.raf = requestAnimationFrame(drawMeter);
+  }
+
+  function playChunk(buf) {
+    const pcm = new Int16Array(buf);
+    if (!pcm.length || !S) return;
+    const audio = S.outCtx.createBuffer(1, pcm.length, OUT_RATE);
+    const data = audio.getChannelData(0);
+    let peak = 0;
+    for (let i = 0; i < pcm.length; i++) { data[i] = pcm[i] / 0x8000; const a = Math.abs(data[i]); if (a > peak) peak = a; }
+    S.outLevel = Math.max(peak, S.outLevel * 0.85);
+    const src = S.outCtx.createBufferSource();
+    src.buffer = audio;
+    src.connect(S.outCtx.destination);
+    const at = Math.max(S.outCtx.currentTime + 0.03, S.playAt);
+    src.start(at);
+    S.playAt = at + audio.duration;
+    S.playing.add(src);
+    src.onended = () => {
+      S && S.playing.delete(src);
+      if (S && S.playing.size === 0) { S.outLevel = 0; if (S.hangupAfterSpeech) setTimeout(() => endCall('Agent qo‘ng‘iroqni yakunladi'), 600); }
+    };
+  }
+  function stopPlayback() {
+    if (!S) return;
+    S.playing.forEach((s) => { try { s.stop(); } catch { /* to'xtagan */ } });
+    S.playing.clear();
+    S.playAt = 0;
+    S.outLevel = 0;
+  }
+
+  function buildSetup(fields) {
+    const tools = [{
+      functionDeclarations: [
+        ...(fields.length ? [{
+          name: 'save_result',
+          description: 'Suhbatda aniqlangan ma’lumotlarni saqlash. Har safar yangi ma’lumot bilganingda chaqir.',
+          behavior: 'NON_BLOCKING',
+          parameters: {
+            type: 'OBJECT',
+            properties: Object.fromEntries(fields.map((f) => [f.name, { type: 'STRING', description: f.description }])),
+          },
+        }] : []),
+        {
+          name: 'end_call',
+          description: 'Qo‘ng‘iroqni tugatish. Mijoz xayrlashganda yoki maqsadga erishilganda, xayrlashuv gapini aytgach chaqir.',
+          behavior: 'NON_BLOCKING',
+          parameters: { type: 'OBJECT', properties: {} },
+        },
+      ],
+    }];
+    let system = el.prompt.value.trim() + '\n' + SPEECH_RULES;
+    if (fields.length) system += `\n- Suhbat davomida quyidagilarni aniqlab, save_result bilan saqla: ${fields.map((f) => f.name).join(', ')}.`;
+    system += '\n- Suhbat tugaganda qisqa xayrlash va end_call funksiyasini chaqir.';
+    return {
+      setup: {
+        model: 'models/' + el.model.value,
+        generationConfig: {
+          responseModalities: ['AUDIO'],
+          speechConfig: { voiceConfig: { prebuiltVoiceConfig: { voiceName: el.voice.value } } },
+        },
+        systemInstruction: { parts: [{ text: system }] },
+        tools,
+        inputAudioTranscription: {},
+        outputAudioTranscription: {},
+      },
+    };
+  }
+
+  function friendlyClose(code, reason) {
+    const r = (reason || '').toLowerCase();
+    if (r.includes('api key') || r.includes('api_key') || code === 1007 && r.includes('key')) return 'API kalit noto‘g‘ri yoki bekor qilingan. aistudio.google.com/apikey dan yangi kalit oling.';
+    if (r.includes('not found') || r.includes('not supported')) return `“${el.model.value}” modeli bu kalit uchun ochiq emas. “Qo‘shimcha” bo‘limida boshqa modelni tanlang.`;
+    if (r.includes('quota') || r.includes('exhausted') || code === 1011 && r.includes('limit')) return 'Kalitning limiti tugagan. Birozdan keyin urinib ko‘ring yoki billing ulang.';
+    if (r.includes('location') || r.includes('region')) return 'Gemini API sizning hududingizdan ishlamayapti. VPN bilan urinib ko‘ring.';
+    return reason ? `Ulanish yopildi: ${reason}` : 'Ulanish kutilmaganda uzildi. Internetni tekshirib, qayta urinib ko‘ring.';
+  }
+
+  async function startCall() {
+    const key = el.apiKey.value.trim();
+    showError('');
+    if (!key) { showError('Avval Gemini API kalitini kiriting.'); el.apiKey.focus(); return; }
+    if (!el.prompt.value.trim()) { showError('Agent vazifasini (prompt) yozing.'); el.prompt.focus(); return; }
+
+    const fields = parseFields();
+    result = {};
+    renderResultSkeleton();
+    el.log.querySelectorAll('.bubble').forEach((b) => b.remove());
+    el.emptyLog.classList.remove('hidden');
+    lastBubble = { user: null, assistant: null };
+
+    S = { playing: new Set(), playAt: 0, inLevel: 0, outLevel: 0, ready: false, startedAt: 0, hangupAfterSpeech: false };
+    setControls(true);
+    setState('Mikrofonga ruxsat so‘ralmoqda…');
+
+    try {
+      S.stream = await navigator.mediaDevices.getUserMedia({
+        audio: { channelCount: 1, echoCancellation: true, noiseSuppression: true, autoGainControl: true },
+      });
+    } catch (e) {
+      showError(e.name === 'NotAllowedError'
+        ? 'Mikrofonga ruxsat berilmadi. Manzil satridagi qulf belgisidan mikrofonni yoqing.'
+        : 'Mikrofon topilmadi yoki band: ' + e.message);
+      return endCall(null);
+    }
+
+    try {
+      S.inCtx = new AudioContext();
+      S.outCtx = new AudioContext({ sampleRate: OUT_RATE });
+      const url = URL.createObjectURL(new Blob([WORKLET], { type: 'application/javascript' }));
+      await S.inCtx.audioWorklet.addModule(url);
+      URL.revokeObjectURL(url);
+      S.node = new AudioWorkletNode(S.inCtx, 'capture');
+      S.inCtx.createMediaStreamSource(S.stream).connect(S.node);
+    } catch (e) {
+      showError('Brauzer audio bilan ishlay olmadi: ' + e.message + '. Chrome yoki Edge’ning yangi versiyasidan foydalaning.');
+      return endCall(null);
+    }
+
+    setState('Gemini’ga ulanmoqda…');
+    const ws = new WebSocket(
+      'wss://generativelanguage.googleapis.com/ws/google.ai.generativelanguage.v1beta.GenerativeService.BidiGenerateContent?key=' +
+        encodeURIComponent(key),
+    );
+    S.ws = ws;
+
+    ws.onopen = () => ws.send(JSON.stringify(buildSetup(fields)));
+
+    S.node.port.onmessage = (e) => {
+      if (!S) return;
+      S.inLevel = e.data.level;
+      if (S.ready && ws.readyState === WebSocket.OPEN) {
+        ws.send(JSON.stringify({ realtimeInput: { audio: { data: b64FromBuffer(e.data.pcm), mimeType: 'audio/pcm;rate=' + IN_RATE } } }));
+      }
+    };
+
+    ws.onmessage = async (ev) => {
+      const text = typeof ev.data === 'string' ? ev.data : await ev.data.text();
+      let msg;
+      try { msg = JSON.parse(text); } catch { return; }
+      handleServer(msg);
+    };
+
+    ws.onerror = () => { /* tafsilot onclose'da keladi */ };
+    ws.onclose = (ev) => {
+      if (!S || S.ws !== ws) return;
+      if (S.closingByUs) return;
+      if (!S.ready || ev.code !== 1000) showError(friendlyClose(ev.code, ev.reason));
+      endCall(S.ready ? 'Ulanish yopildi' : null);
+    };
+  }
+
+  function handleServer(msg) {
+    if (!S) return;
+    if (msg.setupComplete) {
+      S.ready = true;
+      S.startedAt = Date.now();
+      el.stage.classList.add('live');
+      setState('Jonli — gapirishingiz mumkin');
+      S.raf = requestAnimationFrame(drawMeter);
+      if (el.opener.value === 'agent') {
+        S.ws.send(JSON.stringify({
+          clientContent: {
+            turns: [{ role: 'user', parts: [{ text: '(Qo‘ng‘iroq ulandi. Mijoz go‘shakni ko‘tardi. Salomlashib, o‘zingni tanishtir.)' }] }],
+            turnComplete: true,
+          },
+        }));
+      }
+      return;
+    }
+
+    const sc = msg.serverContent;
+    if (sc) {
+      if (sc.interrupted) {
+        stopPlayback();
+        closeTurn('assistant');
+      }
+      if (sc.inputTranscription?.text) {
+        closeTurn('assistant');
+        addLine('user', sc.inputTranscription.text, true);
+      }
+      if (sc.outputTranscription?.text) {
+        closeTurn('user');
+        addLine('assistant', sc.outputTranscription.text, true);
+      }
+      for (const part of sc.modelTurn?.parts || []) {
+        if (part.inlineData?.data && (part.inlineData.mimeType || '').startsWith('audio/')) {
+          playChunk(bufferFromB64(part.inlineData.data));
+        }
+      }
+      if (sc.turnComplete) { closeTurn('assistant'); closeTurn('user'); }
+    }
+
+    if (msg.toolCall?.functionCalls) {
+      const responses = [];
+      for (const fc of msg.toolCall.functionCalls) {
+        if (fc.name === 'save_result') {
+          for (const [k, v] of Object.entries(fc.args || {})) if (v !== null && v !== '') result[k] = String(v);
+          renderResultSkeleton();
+          responses.push({ id: fc.id, name: fc.name, response: { saved: true } });
+        } else if (fc.name === 'end_call') {
+          responses.push({ id: fc.id, name: fc.name, response: { success: true } });
+          S.hangupAfterSpeech = true;
+          // agent hech narsa aytmasa ham qo'ng'iroq osilib qolmasin
+          setTimeout(() => S && S.hangupAfterSpeech && S.playing.size === 0 && endCall('Agent qo‘ng‘iroqni yakunladi'), 4000);
+        } else {
+          responses.push({ id: fc.id, name: fc.name, response: { error: 'unknown function' } });
+        }
+      }
+      if (S.ws.readyState === WebSocket.OPEN) S.ws.send(JSON.stringify({ toolResponse: { functionResponses: responses } }));
+    }
+
+    if (msg.goAway) setState('Sessiya vaqti tugayapti…');
+  }
+
+  function endCall(reason) {
+    if (!S) return;
+    const s = S;
+    s.closingByUs = true;
+    cancelAnimationFrame(s.raf);
+    try { s.ws && s.ws.readyState <= 1 && s.ws.close(1000); } catch { /* jim */ }
+    s.playing.forEach((x) => { try { x.stop(); } catch { /* jim */ } });
+    s.stream?.getTracks().forEach((t) => t.stop());
+    try { s.node?.disconnect(); } catch { /* jim */ }
+    s.inCtx?.state !== 'closed' && s.inCtx?.close();
+    s.outCtx?.state !== 'closed' && s.outCtx?.close();
+    S = null;
+    el.stage.classList.remove('live', 'user-speaking');
+    resetMeter();
+    setControls(false);
+    if (reason) addLine('system', reason);
+    setState(reason ? 'Qo‘ng‘iroq tugadi' : 'Mikrofon va kalit kerak bo‘ladi');
+    if (!reason) el.timer.textContent = 'Qo‘ng‘iroq boshlanmagan';
+  }
+
+  function setControls(inCall) {
+    el.callBtn.textContent = inCall ? 'Tugatish' : 'Qo‘ng‘iroqni boshlash';
+    el.callBtn.classList.toggle('end', inCall);
+    for (const x of [el.apiKey, el.preset, el.prompt, el.fields, el.voice, el.opener, el.model]) x.disabled = inCall;
+  }
+
+  el.callBtn.addEventListener('click', () => (S ? endCall('Siz qo‘ng‘iroqni tugatdingiz') : startCall()));
+  window.addEventListener('beforeunload', () => S && endCall(null));
+})();
+</script>
+</body>
+</html>
